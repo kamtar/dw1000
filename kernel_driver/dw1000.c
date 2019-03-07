@@ -53,9 +53,8 @@ static int dw1000_tsinfo_ena = 0x0f;
 //module_param_named(tsinfo, dw1000_tsinfo_ena, uint, 0444);
 //MODULE_PARM_DESC(tsinfo, "Timestamp information enable flags");
 
-static unsigned int cutter_sn = 0x0000;
-module_param_named(cutter_SN, cutter_sn, uint, 0444);
-MODULE_PARM_DESC(cutter_SN, "SN address");
+static uint cutter_sn = 0x0000;
+module_param(cutter_sn, uint, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP);
 
 /******************************************************************************
  *
@@ -3324,19 +3323,22 @@ static int dw1000_load_eui64(struct dw1000 *dw)
 	if (of_eui64)
 				leui64 = of_eui64[0] | (((uint64_t)of_eui64[1])<<8) | (((uint64_t)of_eui64[2])<<16) | (((uint64_t)of_eui64[3])<<24) 
 												| (((uint64_t)of_eui64[4])<<32) | (((uint64_t)of_eui64[5])<<40) | (((uint64_t)of_eui64[6])<<48) | (((uint64_t)of_eui64[7])<<56);
-		        
+	else
+			dev_warn(dw->dev, "Failed decawave,eui64 read!!\n");
+				        
 	if(cutter_sn == 0)
 	{
-	    dev_warn(dw->dev, "Cutter SN not set! using value 10 as SN\n");
+	    dev_err(dw->dev, "Cutter SN not set! using value 10 as SN\n");
 	    cutter_sn = 10;
 	}
-	
+
 	if( cutter_sn != 0){
-		leui64 = leui64 | cutter_sn;
-		dev_info(dw->dev, "Generating eui64 from cutter SN %d -> EUI64: %ld\n", cutter_sn , leui64);
+		leui64 = leui64 | (((uint64_t)(((cutter_sn & 0x000000FF)<<24)|((cutter_sn & 0x0000FF00)<<8)|((cutter_sn & 0x00FF0000)>>8)|((cutter_sn & 0xFF000000)>>24)))<<32);
+		dev_info(dw->dev, "Generating eui64 from cutter SN %d\n", cutter_sn	);
 	}
 	
-	of_eui64 = (uint8_t*)&leui64;
+	if (of_eui64)
+		of_eui64 = (uint8_t*)&leui64;
 	
 	if (of_eui64) {
 		if (len == sizeof(eui64.raw)) {
