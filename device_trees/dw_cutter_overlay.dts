@@ -87,7 +87,7 @@
 				decawave,eui64 = /bits/ 64 <0xC2EE8A0000000000>;
 				decawave,antd = <ANTD16 ANTD64>;
 				decawave,xtalt = <XTALT>;
-				decawave,default = "Ch7-64";
+				decawave,default = "Ch3-64";
 				decawave,calib {
 					calib@0 {
 						id = "Ch3-64";

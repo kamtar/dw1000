@@ -3305,6 +3305,8 @@ static int dw1000_load_eui64(struct dw1000 *dw)
 {
 	union dw1000_eui64 eui64;
 	const uint8_t *of_eui64;
+	uint64_t leui64;
+	
 	unsigned int i;
 	int len;
 	int rc;
@@ -3318,7 +3320,11 @@ static int dw1000_load_eui64(struct dw1000 *dw)
 
 	/* Read EUI-64 address from devicetree */
 	of_eui64 = of_get_property(dw->dev->of_node, "decawave,eui64", &len);
-	        
+	
+	if (of_eui64)
+				leui64 = of_eui64[0] | (((uint64_t)of_eui64[1])<<8) | (((uint64_t)of_eui64[2])<<16) | (((uint64_t)of_eui64[3])<<24) 
+												| (((uint64_t)of_eui64[4])<<32) | (((uint64_t)of_eui64[5])<<40) | (((uint64_t)of_eui64[6])<<48) | (((uint64_t)of_eui64[7])<<56);
+		        
 	if(cutter_sn == 0)
 	{
 	    dev_warn(dw->dev, "Cutter SN not set! using value 10 as SN\n");
@@ -3326,9 +3332,11 @@ static int dw1000_load_eui64(struct dw1000 *dw)
 	}
 	
 	if( cutter_sn != 0){
-		of_eui64 = of_eui64 | cutter_sn;
-		dev_info(dw->dev, "Generating eui64 from cutter SN %d -> EUI64: 0x%x\n", cutter_sn ,of_eui64);
+		leui64 = leui64 | cutter_sn;
+		dev_info(dw->dev, "Generating eui64 from cutter SN %d -> EUI64: %ld\n", cutter_sn , leui64);
 	}
+	
+	of_eui64 = (uint8_t*)&leui64;
 	
 	if (of_eui64) {
 		if (len == sizeof(eui64.raw)) {
