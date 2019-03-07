@@ -84,24 +84,24 @@
 				interrupt-parent = <&gpio>;
 				interrupts = <25 4>;
 				spi-max-frequency = <SPIMAX>;
-				decawave,eui64 = /bits/ 64 <EUI64>;
+				decawave,eui64 = /bits/ 64 <0xC2EE8A0000000000>;
 				decawave,antd = <ANTD16 ANTD64>;
 				decawave,xtalt = <XTALT>;
 				decawave,default = "Ch7-64";
 				decawave,calib {
 					calib@0 {
-						id = "Ch7-64";
-						ch = <7>;
+						id = "Ch3-64";
+						ch = <3>;
 						prf = <64>;
 						antd = <ANTD64>;
-						power = <0x5171b1d1>;
+						power = <0x2B4B6B8B>;
 					};
 					calib@1 {
-						id = "Ch7-16";
-						ch = <7>;
-						prf = <16>;
-						antd = <ANTD16>;
-						power = <0x32527292>;
+						id = "Ch5-64";
+						ch = <5>;
+						prf = <64>;
+						antd = <ANTD64>;
+						power = <0x2B4B6B8B>;
 					};
 				};
 			};

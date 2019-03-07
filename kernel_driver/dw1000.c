@@ -41,6 +41,7 @@
 /* Enable DW1000 sync lost warnings */
 #undef DW1000_SYNC_LOST_WARN
 
+#define FORCE_DISABLE_FILTERING
 
 /******************************************************************************
  *
@@ -48,10 +49,13 @@
  *
  */
 
-static int dw1000_tsinfo_ena = 0;
-module_param_named(tsinfo, dw1000_tsinfo_ena, uint, 0444);
-MODULE_PARM_DESC(tsinfo, "Timestamp information enable flags");
+static int dw1000_tsinfo_ena = 0x0f;
+//module_param_named(tsinfo, dw1000_tsinfo_ena, uint, 0444);
+//MODULE_PARM_DESC(tsinfo, "Timestamp information enable flags");
 
+static unsigned int cutter_sn = 0x0000;
+module_param_named(cutter_SN, cutter_sn, uint, 0444);
+MODULE_PARM_DESC(cutter_SN, "SN address");
 
 /******************************************************************************
  *
@@ -810,7 +814,7 @@ static const struct dw1000_rate_config dw1000_rate_configs[] = {
 	},
 	[DW1000_RATE_6800K] = {
 		.tdsym_ns = 128,
-		.txpsr = DW1000_TXPSR_64,
+		.txpsr = DW1000_TXPSR_128,
 		.drx_tune0b = 0x0001,
 		.drx_tune2 = {
 			[DW1000_PRF_16M] = { 0x2d, 0x00, 0x1a, 0x31 },
@@ -867,7 +871,7 @@ static unsigned int dw1000_pcode(struct dw1000 *dw)
 		return pcode;
 
 	/* Otherwise, use highest supported preamble code */
-	return (fls(pcodes) - 1);
+	return (9);
 }
 
 /**
@@ -2312,6 +2316,7 @@ static void dw1000_rx_irq(struct dw1000 *dw)
 	rx->rx_buffer.data.rx_buf = skb->data;
 	rx->rx_buffer.data.len = len;
 
+
 	/* Send data SPI message */
 	if ((rc = spi_sync(dw->spi, &rx->data)) != 0) {
 		dev_err(dw->dev, "RX data message failed: %d\n", rc);
@@ -2610,7 +2615,9 @@ static int dw1000_set_promiscuous_mode(struct ieee802154_hw *hw, bool on)
 {
 	struct dw1000 *dw = hw->priv;
 	int rc;
-
+#ifdef FORCE_DISABLE_FILTERING
+	on = true;//force promiscuous_mode
+#endif
 	/* Enable/disable frame filtering */
 	if ((rc = regmap_update_bits(dw->sys_cfg.regs, 0, DW1000_SYS_CFG_FFEN,
 				     (on ? 0 : DW1000_SYS_CFG_FFEN))) != 0)
@@ -3157,13 +3164,13 @@ static int dw1000_reset(struct dw1000 *dw)
 		gpio_set_value(dw->power_gpio, 1);
 		msleep(DW1000_POWER_ON_DELAY);
 	}
-
-	/* Release RESET GPIO */
+	
+	/* Release RESET GPIO */  
 	if (gpio_is_valid(dw->reset_gpio)) {
 		gpio_set_value(dw->reset_gpio, 1);
 		msleep(DW1000_HARD_RESET_DELAY);
 	}
-
+			    
 	/* Force slow SPI clock speed */
 	dw->spi->max_speed_hz = DW1000_SPI_SLOW_HZ;
 
@@ -3301,7 +3308,7 @@ static int dw1000_load_eui64(struct dw1000 *dw)
 	unsigned int i;
 	int len;
 	int rc;
-
+	
 	/* Read EUI-64 address from OTP */
 	if ((rc = regmap_bulk_read(dw->otp, DW1000_OTP_EUI64, eui64.otp,
 				   ARRAY_SIZE(eui64.otp))) != 0)
@@ -3311,6 +3318,18 @@ static int dw1000_load_eui64(struct dw1000 *dw)
 
 	/* Read EUI-64 address from devicetree */
 	of_eui64 = of_get_property(dw->dev->of_node, "decawave,eui64", &len);
+	        
+	if(cutter_sn == 0)
+	{
+	    dev_warn((dw-dev, "Cutter SN not set! using value 10 as SN\n")
+	    cutter_sn = 10;
+	}
+	
+	if( cutter_sn != 0){
+		of_eui64 = of_eui64 | cutter_sn;
+		dev_info(dw-dev, "Generating eui64 from cutter SN %d -> EUI64: 0x%x\n", cutter_sn ,of_eui64);
+	}
+	
 	if (of_eui64) {
 		if (len == sizeof(eui64.raw)) {
 			for (i = 0; i < len; i++)
@@ -3320,6 +3339,7 @@ static int dw1000_load_eui64(struct dw1000 *dw)
 				len);
 		}
 	}
+
 
 	/* Use EUI-64 address if valid, otherwise generate random address */
 	if (ieee802154_is_valid_extended_unicast_addr(eui64.addr)) {
@@ -3524,7 +3544,7 @@ static int dw1000_init(struct dw1000 *dw)
 	if ((rc = regmap_read(dw->dev_id.regs, DW1000_MODELVERREV,
 			      &modelverrev)) != 0)
 		return rc;
-	dev_info(dw->dev, "DW1000 revision %d.%d.%d detected\n",
+		 dev_info(dw->dev, "DW1000 revision %d.%d.%d detected\n",
 		 DW1000_MODELVERREV_MODEL(modelverrev),
 		 DW1000_MODELVERREV_VER(modelverrev),
 		 DW1000_MODELVERREV_REV(modelverrev));
@@ -3652,7 +3672,7 @@ static int dw1000_init(struct dw1000 *dw)
 				DW1000_SYS_STATUS_RFPLL_LL |
 				DW1000_SYS_STATUS_CLKPLL_LL))) != 0)
 		return rc;
-
+    
 	return 0;
 }
 
@@ -3782,7 +3802,7 @@ static int dw1000_probe(struct spi_device *spi)
 		dev_err(dw->dev, "could not register IEEE 802.15.4 device: %d\n", rc);
 		goto err_register_hw;
 	}
-
+                              
 	spi_set_drvdata(spi, hw);
 	return 0;
 
