@@ -3321,13 +3321,13 @@ static int dw1000_load_eui64(struct dw1000 *dw)
 	        
 	if(cutter_sn == 0)
 	{
-	    dev_warn((dw-dev, "Cutter SN not set! using value 10 as SN\n")
+	    dev_warn(dw->dev, "Cutter SN not set! using value 10 as SN\n");
 	    cutter_sn = 10;
 	}
 	
 	if( cutter_sn != 0){
 		of_eui64 = of_eui64 | cutter_sn;
-		dev_info(dw-dev, "Generating eui64 from cutter SN %d -> EUI64: 0x%x\n", cutter_sn ,of_eui64);
+		dev_info(dw->dev, "Generating eui64 from cutter SN %d -> EUI64: 0x%x\n", cutter_sn ,of_eui64);
 	}
 	
 	if (of_eui64) {
@@ -3335,8 +3335,7 @@ static int dw1000_load_eui64(struct dw1000 *dw)
 			for (i = 0; i < len; i++)
 				eui64.raw[i] = of_eui64[len - i - 1];
 		} else {
-			dev_err(dw->dev, "invalid decawave,eui64 length %d\n",
-				len);
+			dev_err(dw->dev, "invalid decawave,eui64 length %d\n", len);
 		}
 	}
 
